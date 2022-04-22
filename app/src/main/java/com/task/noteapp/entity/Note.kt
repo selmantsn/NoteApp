@@ -6,25 +6,26 @@ import androidx.room.PrimaryKey
 import java.io.Serializable
 
 @Entity(tableName = "Note")
-class Note : Serializable {
-
+data class Note(
     @PrimaryKey(autoGenerate = true)
-    var id: Int? = null
+    var id: Int? = null,
 
     @ColumnInfo(name = "title")
-    var title: String? = null
+    var title: String? = null,
 
     @ColumnInfo(name = "description")
-    var description: String? = null
+    var description: String? = null,
 
     @ColumnInfo(name = "date")
-    var date: String? = null
+    var date: String? = null,
 
     @ColumnInfo(name = "imgUrl")
-    var imgUrl: String? = null
+    var imgUrl: String? = null,
 
     @ColumnInfo(name = "edited")
     var edited: Boolean = false
+
+) : Serializable {
 
     override fun toString(): String {
         return "$title : $date"

@@ -17,11 +17,7 @@ class NoteAdapter(
     private val deleteClickListener: (note: Note, position: Int) -> Unit
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
-    var noteList = arrayListOf<Note>()
-        set(value) {
-            field = value
-            notifyDataSetChanged()
-        }
+    private var noteList = arrayListOf<Note>()
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         val inflater = LayoutInflater.from(parent.context)
@@ -85,6 +81,12 @@ class NoteAdapter(
             }
 
         }
+    }
+
+    fun setData(list: List<Note>) {
+        noteList.clear()
+        noteList.addAll(list)
+        notifyDataSetChanged()
     }
 
     fun deleteItem(position: Int) {

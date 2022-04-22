@@ -2,26 +2,26 @@ package com.task.noteapp.ui
 
 import android.app.Activity
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
-import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.lifecycleScope
+import androidx.fragment.app.viewModels
 import com.bumptech.glide.Glide
 import com.task.noteapp.R
-import com.task.noteapp.database.NoteDataBase
 import com.task.noteapp.entity.Note
+import com.task.noteapp.utils.getPathFromUri
 import com.task.noteapp.utils.hideKeyboard
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.android.synthetic.main.create_edit_note_fragment.*
 import java.text.SimpleDateFormat
 import java.util.*
 
-
+@AndroidEntryPoint
 class CreateEditNoteFragment : Fragment() {
+    private val viewModel: NoteViewModel by viewModels()
 
     private var noteId: Int = -1
     private var selectedImagePath: String? = null
@@ -38,6 +38,26 @@ class CreateEditNoteFragment : Fragment() {
         getArgument()
         initViews()
         onClickListeners()
+        setObservers()
+    }
+
+    private fun setObservers() {
+        viewModel.noteData.observe(viewLifecycleOwner) { note ->
+            etNoteTitle.setText(note.title)
+            etNoteDesc.setText(note.description)
+
+            note.imgUrl?.let { path ->
+                context?.let {
+                    selectedImagePath = path
+                    Glide.with(it)
+                        .load(path)
+                        .into(ivNoteImg);
+
+                    layoutImage.visibility = View.VISIBLE
+                }
+            }
+            tvDateTime.text = note.date
+        }
     }
 
 
@@ -74,26 +94,7 @@ class CreateEditNoteFragment : Fragment() {
 
     private fun initViews() {
         if (noteId != -1) {
-            viewLifecycleOwner.lifecycleScope.launchWhenCreated {
-
-                context?.let {
-                    val note = NoteDataBase.getDataBase(it).noteDao().getNote(noteId)
-
-                    etNoteTitle.setText(note.title)
-                    etNoteDesc.setText(note.description)
-
-                    note.imgUrl?.let { path ->
-                        selectedImagePath = path
-                        Glide.with(it)
-                            .load(path)
-                            .into(ivNoteImg);
-
-                        layoutImage.visibility = View.VISIBLE
-                    }
-
-                    tvDateTime.text = note.date
-                }
-            }
+            viewModel.getNote(noteId)
         } else {
             tvDateTime.text = getCurrentDate()
         }
@@ -111,7 +112,7 @@ class CreateEditNoteFragment : Fragment() {
             if (data != null) {
                 val selectedImageUrl = data.data
                 if (selectedImageUrl != null) {
-                    selectedImagePath = getPathFromUri(selectedImageUrl)
+                    selectedImagePath = requireContext().getPathFromUri(selectedImageUrl)
                     Glide.with(requireContext())
                         .load(selectedImagePath)
                         .into(ivNoteImg);
@@ -122,36 +123,15 @@ class CreateEditNoteFragment : Fragment() {
         }
     }
 
-    private fun getPathFromUri(contentUri: Uri): String? {
-        val filePath: String?
-        val cursor = requireActivity().contentResolver.query(contentUri, null, null, null, null)
-        if (cursor == null) {
-            filePath = contentUri.path
-        } else {
-            cursor.moveToFirst()
-            val index = cursor.getColumnIndex(MediaStore.Images.ImageColumns.DATA)
-            filePath = cursor.getString(index)
-            cursor.close()
-        }
-        return filePath
-    }
-
-
     private fun updateNote() {
-        viewLifecycleOwner.lifecycleScope.launchWhenCreated {
-            context?.let {
-                val note = NoteDataBase.getDataBase(it).noteDao().getNote(noteId)
+        val note = Note()
+        note.title = etNoteTitle?.text.toString()
+        note.description = etNoteDesc?.text.toString()
+        note.date = getCurrentDate()
+        note.edited = true
 
-                note.title = etNoteTitle.text.toString()
-                note.description = etNoteDesc.text.toString()
-                note.date = getCurrentDate()
-                note.edited = true
-                note.imgUrl = selectedImagePath
-
-                NoteDataBase.getDataBase(it).noteDao().editNote(note)
-                requireActivity().supportFragmentManager.popBackStack()
-            }
-        }
+        viewModel.editNote(note)
+        requireActivity().supportFragmentManager.popBackStack()
     }
 
     private fun saveNote() {
@@ -164,22 +144,17 @@ class CreateEditNoteFragment : Fragment() {
                     .show()
             }
             else -> {
-                viewLifecycleOwner.lifecycleScope.launchWhenCreated {
-                    val note = Note()
-                    note.title = etNoteTitle?.text.toString()
-                    note.description = etNoteDesc?.text.toString()
-                    note.date = getCurrentDate()
-                    note.imgUrl = selectedImagePath
+                val note = Note()
+                note.title = etNoteTitle?.text.toString()
+                note.description = etNoteDesc?.text.toString()
+                note.date = getCurrentDate()
+                note.imgUrl = selectedImagePath
 
-                    context?.let {
-                        NoteDataBase.getDataBase(it).noteDao().addNote(note)
-                        requireActivity().supportFragmentManager.popBackStack()
-                    }
-                }
+                viewModel.addNote(note)
+                requireActivity().supportFragmentManager.popBackStack()
             }
         }
     }
-
 
 
     override fun onDestroyView() {
